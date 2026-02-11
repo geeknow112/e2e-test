@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { assertPageLoaded, wait } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
-const STOCK_URL = `${baseUrl}/wp-admin/admin.php?page=stock-management`;
+const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=stock-management`;
 
 const buttons = [
   { name: '商品登録', urlPattern: /page=goods-detail/ },
@@ -15,19 +16,17 @@ const buttons = [
 test.describe('在庫管理画面', () => {
   for (const { name, urlPattern } of buttons) {
     test(`「${name}」ボタンをクリックして正常に遷移する`, async ({ page }) => {
-      await page.goto(STOCK_URL);
-      await expect(page.locator('#wpbody-content')).toBeVisible();
+      await page.goto(PAGE_URL);
+      await expect(page.locator('#wpbody-content').first()).toBeVisible();
+      await wait(page);
 
-      const btn = page.locator('#wpbody-content').getByRole('button', { name });
+      const btn = page.locator('#wpbody-content').first().getByRole('button', { name });
       await expect(btn).toBeVisible();
       await btn.click();
+      await wait(page);
 
       await page.waitForURL(urlPattern, { timeout: 10000 });
-
-      await expect(page.locator('#wpadminbar')).toBeVisible();
-      const body = await page.locator('body').textContent();
-      expect(body).not.toContain('Fatal error');
-      expect(body).not.toContain('Not Found');
+      await assertPageLoaded(page);
     });
   }
 });

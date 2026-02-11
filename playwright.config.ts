@@ -6,6 +6,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30000,
   retries: 0,
+  workers: 1,
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL,
