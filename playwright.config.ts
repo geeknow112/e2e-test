@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default defineConfig({
+  globalSetup: './lib/check-auth.ts',
   testDir: './tests',
   timeout: 30000,
   retries: 0,
