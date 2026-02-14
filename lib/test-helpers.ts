@@ -1,6 +1,11 @@
 import { Page, expect } from '@playwright/test';
 
-const SLOW_WAIT = 3000;
+// WAIT_SEC環境変数で待機秒数を指定（1〜3、デフォルト3）
+const rawWait = process.env.WAIT_SEC ? Number(process.env.WAIT_SEC) : 3;
+if (isNaN(rawWait) || rawWait < 1 || rawWait > 3) {
+  throw new Error(`WAIT_SEC は 1〜3 の整数で指定してください（現在値: ${process.env.WAIT_SEC}）`);
+}
+const SLOW_WAIT = rawWait * 1000;
 
 /**
  * 指定ミリ秒待機する（目視確認用）
