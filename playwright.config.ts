@@ -23,8 +23,12 @@ export default defineConfig({
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome'],
+        browserName: 'chromium',
         storageState: './auth.json',
+        viewport: null,
+        launchOptions: {
+          args: ['--start-maximized'],
+        },
       },
       dependencies: ['setup'],
     },

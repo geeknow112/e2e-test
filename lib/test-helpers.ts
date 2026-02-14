@@ -18,5 +18,6 @@ export async function assertPageLoaded(page: Page) {
   const body = await page.locator('body').textContent();
   expect(body).not.toContain('Fatal error');
   expect(body).not.toContain('Not Found');
+  await page.evaluate(() => { document.body.style.zoom = '75%'; });
   await wait(page);
 }
