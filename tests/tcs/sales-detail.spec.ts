@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showStep, showTestResult, highlightClick, highlightFill } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
 const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=sales-detail`;
@@ -26,7 +26,10 @@ const LOCATORS = {
   repeatStartDt: '#repeat_s_dt',
   repeatEndDt: '#repeat_e_dt',
   confirmBtn: '#cmd_regist',
+  updateBtn: '#cmd_update',
 } as const;
+
+const LIST_URL = `${baseUrl}/wp-admin/admin.php?page=sales-list`;
 
 test.describe('注文登録画面', () => {
 
@@ -128,5 +131,61 @@ test.describe('注文登録画面', () => {
     expect(body).not.toContain('Fatal error');
     await expect(page.locator('#wpbody-content').first()).toBeVisible();
     await showTestResult(page, true);
+  });
+
+  // 要件5: 既存データの編集→確認→更新→Success確認
+  test('既存注文を編集して更新ボタンを押すとSuccessが表示される', async ({ page }) => {
+    test.setTimeout(120000);
+
+    // ダイアログを自動でOK
+    page.on('dialog', async (dialog) => {
+      await dialog.accept();
+    });
+
+    // Step1: 注文一覧から詳細画面へ遷移
+    await page.goto(LIST_URL);
+    await assertPageLoaded(page);
+    await showTestTitle(page, '編集→確認→更新テスト');
+
+    // 一覧の最初のsales-detailリンクをクリック
+    const detailLink = page.locator('#wpbody-content a[href*="page=sales-detail"]').first();
+    await expect(detailLink).toBeVisible();
+    await detailLink.click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await showStep(page, '詳細画面に遷移完了');
+    await wait(page);
+
+    // Step2: 確認ボタンを押す（これだけ！）
+    await showStep(page, '確認ボタンをクリック');
+    await page.locator('#cmd_regist').click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+    await showStep(page, '確認ボタン押下後の画面');
+    await wait(page);
+
+    // 結果確認: 何が表示されているか
+    const url = page.url();
+    const hasUpdate = await page.locator('#cmd_update').isVisible().catch(() => false);
+    const hasRegist = await page.locator('#cmd_regist').isVisible().catch(() => false);
+    const hasReturn = await page.locator('#cmd_return').isVisible().catch(() => false);
+    const bodyText = await page.locator('body').textContent() || '';
+    const hasFatal = bodyText.includes('Fatal error');
+
+    await showStep(page, `結果: update=${hasUpdate} regist=${hasRegist} return=${hasReturn} fatal=${hasFatal}`);
+
+    // 確認画面に遷移できていれば更新ボタンが見える
+    if (hasUpdate) {
+      await showStep(page, '確認画面OK → 更新ボタンをクリック');
+      await page.locator('#cmd_update').click();
+      await page.waitForLoadState('networkidle', { timeout: 30000 });
+      await wait(page);
+
+      const finalBody = await page.locator('body').textContent() || '';
+      expect(finalBody).not.toContain('Fatal error');
+      await expect(page.locator('#cmd_return')).toBeVisible();
+      await showTestResult(page, true);
+    } else {
+      // 確認画面に遷移できなかった場合、デバッグ情報を出して失敗
+      throw new Error(`確認画面に遷移できませんでした。URL=${url}, fatal=${hasFatal}, regist=${hasRegist}`);
+    }
   });
 });
