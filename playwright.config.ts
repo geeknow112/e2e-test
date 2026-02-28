@@ -5,32 +5,28 @@ dotenv.config();
 export default defineConfig({
   globalSetup: './lib/check-auth.ts',
   testDir: './tests',
-  timeout: 30000,
+  timeout: 60000,
   retries: 0,
   workers: 1,
   reporter: [['html', { open: 'never' }]],
   use: {
     baseURL: process.env.BASE_URL,
-    screenshot: 'only-on-failure',
+    screenshot: 'on',
+    video: { mode: 'on', size: { width: 1920, height: 1080 } },
     trace: 'on-first-retry',
   },
   projects: [
-    {
-      name: 'setup',
-      testDir: './scripts',
-      testMatch: 'save-auth.spec.ts',
-    },
     {
       name: 'chromium',
       use: {
         browserName: 'chromium',
         storageState: './auth.json',
-        viewport: null,
+        locale: 'ja-JP',
+        viewport: { width: 1920, height: 1080 },
         launchOptions: {
-          args: ['--start-maximized'],
+          args: ['--lang=ja'],
         },
       },
-      dependencies: ['setup'],
     },
   ],
 });

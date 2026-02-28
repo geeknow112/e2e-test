@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill, highlightSelect } from '../../lib/test-helpers';
 
 interface SearchCondition {
   name: string;
@@ -42,16 +42,17 @@ const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=stock-receive`;
 async function executeSearch(page: Page, condition: SearchCondition): Promise<void> {
   await page.goto(PAGE_URL);
   await assertPageLoaded(page);
+  await showTestTitle(page, `検索: ${condition.name}`);
 
-  if (condition.arrival_s_dt) await page.locator(LOCATORS.arrivalStartDate).fill(condition.arrival_s_dt);
-  if (condition.arrival_e_dt) await page.locator(LOCATORS.arrivalEndDate).fill(condition.arrival_e_dt);
-  if (condition.customer_name) await page.locator(LOCATORS.customerNameInput).fill(condition.customer_name);
-  if (condition.tank) await page.locator(LOCATORS.tankInput).fill(condition.tank);
-  if (condition.goods_name) await page.locator(LOCATORS.goodsNameInput).fill(condition.goods_name);
-  if (condition.outgoing_warehouse) await page.locator(LOCATORS.warehouseSelect).selectOption(condition.outgoing_warehouse);
+  if (condition.arrival_s_dt) await highlightFill(page, page.locator(LOCATORS.arrivalStartDate), condition.arrival_s_dt, '入庫開始日を入力');
+  if (condition.arrival_e_dt) await highlightFill(page, page.locator(LOCATORS.arrivalEndDate), condition.arrival_e_dt, '入庫終了日を入力');
+  if (condition.customer_name) await highlightFill(page, page.locator(LOCATORS.customerNameInput), condition.customer_name, '顧客名を入力');
+  if (condition.tank) await highlightFill(page, page.locator(LOCATORS.tankInput), condition.tank, 'タンクを入力');
+  if (condition.goods_name) await highlightFill(page, page.locator(LOCATORS.goodsNameInput), condition.goods_name, '商品名を入力');
+  if (condition.outgoing_warehouse) await highlightSelect(page, page.locator(LOCATORS.warehouseSelect), condition.outgoing_warehouse, '出庫倉庫を選択');
 
   await wait(page);
-  await page.locator(LOCATORS.searchButton).first().click();
+  await highlightClick(page, page.locator(LOCATORS.searchButton).first(), '検索ボタンをクリック');
   await wait(page);
   await assertPageLoaded(page);
 }
@@ -61,6 +62,7 @@ test.describe('入庫予定日検索画面', () => {
   test('画面が正常に表示され検索フォームの全要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: 検索フォーム全要素の確認');
     await expect(page.locator(LOCATORS.searchButton).first()).toBeVisible();
     await expect(page.locator(LOCATORS.arrivalStartDate)).toBeVisible();
     await expect(page.locator(LOCATORS.arrivalEndDate)).toBeVisible();
@@ -69,6 +71,7 @@ test.describe('入庫予定日検索画面', () => {
     await expect(page.locator(LOCATORS.goodsNameInput)).toBeVisible();
     await expect(page.locator(LOCATORS.warehouseSelect)).toBeVisible();
     await wait(page);
+    await showTestResult(page, true);
   });
 
   test('各検索条件パターンで検索し結果が正常に表示される', async ({ page }) => {
@@ -76,5 +79,6 @@ test.describe('入庫予定日検索画面', () => {
     for (const pattern of SEARCH_PATTERNS) {
       await executeSearch(page, pattern);
     }
+    await showTestResult(page, true);
   });
 });

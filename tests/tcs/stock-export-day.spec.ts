@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill, highlightSelect } from '../../lib/test-helpers';
 
 interface SearchCondition {
   name: string;
@@ -26,12 +26,13 @@ const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=stock-export-day`;
 async function executeSearch(page: Page, condition: SearchCondition): Promise<void> {
   await page.goto(PAGE_URL);
   await assertPageLoaded(page);
+  await showTestTitle(page, `検索: ${condition.name}`);
 
-  if (condition.delivery_s_dt) await page.locator(LOCATORS.deliveryStartDate).fill(condition.delivery_s_dt);
-  if (condition.outgoing_warehouse) await page.locator(LOCATORS.warehouseSelect).selectOption(condition.outgoing_warehouse);
+  if (condition.delivery_s_dt) await highlightFill(page, page.locator(LOCATORS.deliveryStartDate), condition.delivery_s_dt, '配送日を入力');
+  if (condition.outgoing_warehouse) await highlightSelect(page, page.locator(LOCATORS.warehouseSelect), condition.outgoing_warehouse, '出庫倉庫を選択');
 
   await wait(page);
-  await page.locator(LOCATORS.searchButton).first().click();
+  await highlightClick(page, page.locator(LOCATORS.searchButton).first(), '検索ボタンをクリック');
   await wait(page);
   await assertPageLoaded(page);
 }
@@ -41,10 +42,12 @@ test.describe('在庫出力日別画面', () => {
   test('画面が正常に表示され検索フォームの全要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: 検索フォーム全要素の確認');
     await expect(page.locator(LOCATORS.searchButton).first()).toBeVisible();
     await expect(page.locator(LOCATORS.deliveryStartDate)).toBeVisible();
     await expect(page.locator(LOCATORS.warehouseSelect)).toBeVisible();
     await wait(page);
+    await showTestResult(page, true);
   });
 
   test('各検索条件パターンで検索し結果が正常に表示される', async ({ page }) => {
@@ -52,5 +55,6 @@ test.describe('在庫出力日別画面', () => {
     for (const pattern of SEARCH_PATTERNS) {
       await executeSearch(page, pattern);
     }
+    await showTestResult(page, true);
   });
 });

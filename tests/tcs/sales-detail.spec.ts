@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
 const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=sales-detail`;
@@ -34,6 +34,7 @@ test.describe('注文登録画面', () => {
   test('画面が正常に表示されフォーム要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: フォーム要素の確認');
 
     await expect(page.locator(LOCATORS.salesNo)).toBeVisible();
     await expect(page.locator(LOCATORS.customer)).toBeVisible();
@@ -54,21 +55,23 @@ test.describe('注文登録画面', () => {
     await expect(page.locator(LOCATORS.repeatEndDt)).toBeAttached();
     await expect(page.locator(LOCATORS.confirmBtn)).toBeVisible();
     await wait(page);
+    await showTestResult(page, true);
   });
 
   // 要件2: フォーム入力テスト（編集可能な欄のみ）
   test('編集可能な入力欄に値を設定できる', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'フォーム入力: 各入力欄');
 
     // テキストエリア
-    await page.locator(LOCATORS.field1).fill('テスト備考');
+    await highlightFill(page, page.locator(LOCATORS.field1), 'テスト備考', '備考を入力');
     await expect(page.locator(LOCATORS.field1)).toHaveValue('テスト備考');
 
     // 日付入力
-    await page.locator(LOCATORS.deliveryDt).fill('2026-03-01');
+    await highlightFill(page, page.locator(LOCATORS.deliveryDt), '2026-03-01', '配送日を入力');
     await expect(page.locator(LOCATORS.deliveryDt)).toHaveValue('2026-03-01');
-    await page.locator(LOCATORS.arrivalDt).fill('2026-03-02');
+    await highlightFill(page, page.locator(LOCATORS.arrivalDt), '2026-03-02', '入庫日を入力');
     await expect(page.locator(LOCATORS.arrivalDt)).toHaveValue('2026-03-02');
 
     // セレクトボックス（顧客を選択）
@@ -78,27 +81,29 @@ test.describe('注文登録画面', () => {
     }
 
     await wait(page);
+    await showTestResult(page, true);
   });
 
   // 要件3: チェックボックス操作（label経由でクリック）
   test('チェックボックスをlabel経由で操作できる', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'チェックボックス操作');
 
     // 在庫使用チェックボックス（labelでクリック）
-    await page.locator(LOCATORS.useStockLabel).click();
+    await highlightClick(page, page.locator(LOCATORS.useStockLabel), '在庫使用をON');
     await wait(page);
     await expect(page.locator(LOCATORS.useStock)).toBeChecked();
-    await page.locator(LOCATORS.useStockLabel).click();
+    await highlightClick(page, page.locator(LOCATORS.useStockLabel), '在庫使用をOFF');
     await expect(page.locator(LOCATORS.useStock)).not.toBeChecked();
 
     // 繰返チェックボックス（labelがあればlabel経由、なければ直接）
     const repeatLabel = page.locator(LOCATORS.repeatFgLabel);
     if (await repeatLabel.isVisible()) {
-      await repeatLabel.click();
+      await highlightClick(page, repeatLabel, '繰返をON');
       await wait(page);
       await expect(page.locator(LOCATORS.repeatFg)).toBeChecked();
-      await repeatLabel.click();
+      await highlightClick(page, repeatLabel, '繰返をOFF');
       await expect(page.locator(LOCATORS.repeatFg)).not.toBeChecked();
     } else {
       await page.locator(LOCATORS.repeatFg).check({ force: true });
@@ -107,18 +112,21 @@ test.describe('注文登録画面', () => {
       await page.locator(LOCATORS.repeatFg).uncheck({ force: true });
       await expect(page.locator(LOCATORS.repeatFg)).not.toBeChecked();
     }
+    await showTestResult(page, true);
   });
 
   // 要件4: 確認ボタンクリック
   test('「確認」ボタンをクリックしてエラーが発生しない', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'ボタン操作: 確認');
 
-    await page.locator(LOCATORS.confirmBtn).click();
+    await highlightClick(page, page.locator(LOCATORS.confirmBtn), '確認ボタンをクリック');
     await wait(page);
 
     const body = await page.locator('body').textContent();
     expect(body).not.toContain('Fatal error');
     await expect(page.locator('#wpbody-content').first()).toBeVisible();
+    await showTestResult(page, true);
   });
 });
