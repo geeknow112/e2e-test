@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
 const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=customer-detail`;
@@ -20,6 +20,7 @@ test.describe('顧客登録画面', () => {
   test('画面が正常に表示されフォーム要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: フォーム要素の確認');
 
     await expect(page.locator(LOCATORS.customerCode)).toBeVisible();
     await expect(page.locator(LOCATORS.customerName)).toBeVisible();
@@ -29,50 +30,57 @@ test.describe('顧客登録画面', () => {
     expect(checkboxCount).toBeGreaterThan(0);
     await expect(page.locator(LOCATORS.confirmBtn)).toBeVisible();
     await wait(page);
+    await showTestResult(page, true);
   });
 
   // 要件2: フォーム入力テスト（編集可能な欄のみ）
   test('編集可能なテキスト欄に入力できる', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'フォーム入力: テキスト欄');
 
     // customerCodeはreadonly、それ以外に入力
-    await page.locator(LOCATORS.customerName).fill('テスト顧客');
-    await page.locator(LOCATORS.tank).fill('テストタンク');
+    await highlightFill(page, page.locator(LOCATORS.customerName), 'テスト顧客', '顧客名を入力');
+    await highlightFill(page, page.locator(LOCATORS.tank), 'テストタンク', 'タンクを入力');
     await wait(page);
 
     await expect(page.locator(LOCATORS.customerName)).toHaveValue('テスト顧客');
     await expect(page.locator(LOCATORS.tank)).toHaveValue('テストタンク');
+    await showTestResult(page, true);
   });
 
   // 要件3: 商品チェックボックス操作
   test('商品チェックボックスをクリックできる', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'チェックボックス操作');
 
     const firstCheckbox = page.locator(LOCATORS.goodsCheckbox).first();
-    await firstCheckbox.check();
+    await highlightClick(page, firstCheckbox, 'チェックボックスをON');
     await wait(page);
     await expect(firstCheckbox).toBeChecked();
 
-    await firstCheckbox.uncheck();
+    await highlightClick(page, firstCheckbox, 'チェックボックスをOFF');
     await expect(firstCheckbox).not.toBeChecked();
+    await showTestResult(page, true);
   });
 
   // 要件4: 追加ボタン・確認ボタンクリック
   test('「追加」「確認」ボタンをクリックしてエラーが発生しない', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'ボタン操作: 追加・確認');
 
-    await page.locator(LOCATORS.addTankBtn).click();
+    await highlightClick(page, page.locator(LOCATORS.addTankBtn), '追加ボタンをクリック');
     await wait(page);
     const body1 = await page.locator('body').textContent();
     expect(body1).not.toContain('Fatal error');
 
-    await page.locator(LOCATORS.confirmBtn).click();
+    await highlightClick(page, page.locator(LOCATORS.confirmBtn), '確認ボタンをクリック');
     await wait(page);
     const body2 = await page.locator('body').textContent();
     expect(body2).not.toContain('Fatal error');
     await expect(page.locator('#wpbody-content').first()).toBeVisible();
+    await showTestResult(page, true);
   });
 });

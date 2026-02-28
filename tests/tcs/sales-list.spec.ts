@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showStep, showTestResult, highlightClick, highlightFill, highlightSelect } from '../../lib/test-helpers';
 
 // --- 型定義 ---
 interface SearchCondition {
@@ -70,51 +70,52 @@ const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=sales-list`;
 async function executeSearch(page: Page, condition: SearchCondition): Promise<void> {
   await page.goto(PAGE_URL);
   await assertPageLoaded(page);
+  await showTestTitle(page, `検索: ${condition.name}`);
 
   // テキスト入力の設定
   if (condition.no) {
-    await page.locator(LOCATORS.noInput).fill(condition.no);
+    await highlightFill(page, page.locator(LOCATORS.noInput), condition.no, '注文番号を入力');
   }
   if (condition.customer_name) {
-    await page.locator(LOCATORS.customerNameInput).fill(condition.customer_name);
+    await highlightFill(page, page.locator(LOCATORS.customerNameInput), condition.customer_name, '顧客名を入力');
   }
   if (condition.goods_name) {
-    await page.locator(LOCATORS.goodsNameInput).fill(condition.goods_name);
+    await highlightFill(page, page.locator(LOCATORS.goodsNameInput), condition.goods_name, '商品名を入力');
   }
   if (condition.ship_addr) {
-    await page.locator(LOCATORS.shipAddrInput).fill(condition.ship_addr);
+    await highlightFill(page, page.locator(LOCATORS.shipAddrInput), condition.ship_addr, '配送先を入力');
   }
   if (condition.lot) {
-    await page.locator(LOCATORS.lotInput).fill(condition.lot);
+    await highlightFill(page, page.locator(LOCATORS.lotInput), condition.lot, 'ロットを入力');
   }
 
   // セレクトボックスの設定
   if (condition.car_model) {
-    await page.locator(LOCATORS.carModelSelect).selectOption(condition.car_model);
+    await highlightSelect(page, page.locator(LOCATORS.carModelSelect), condition.car_model, '車種を選択');
   }
   if (condition.status) {
-    await page.locator(LOCATORS.statusSelect).selectOption(condition.status);
+    await highlightSelect(page, page.locator(LOCATORS.statusSelect), condition.status, 'ステータスを選択');
   }
   if (condition.outgoing_warehouse) {
-    await page.locator(LOCATORS.warehouseSelect).selectOption(condition.outgoing_warehouse);
+    await highlightSelect(page, page.locator(LOCATORS.warehouseSelect), condition.outgoing_warehouse, '出庫倉庫を選択');
   }
 
   // 日付入力の設定
   if (condition.delivery_s_dt) {
-    await page.locator(LOCATORS.deliveryStartDate).fill(condition.delivery_s_dt);
+    await highlightFill(page, page.locator(LOCATORS.deliveryStartDate), condition.delivery_s_dt, '配送開始日を入力');
   }
   if (condition.delivery_e_dt) {
-    await page.locator(LOCATORS.deliveryEndDate).fill(condition.delivery_e_dt);
+    await highlightFill(page, page.locator(LOCATORS.deliveryEndDate), condition.delivery_e_dt, '配送終了日を入力');
   }
   if (condition.arrival_s_dt) {
-    await page.locator(LOCATORS.arrivalStartDate).fill(condition.arrival_s_dt);
+    await highlightFill(page, page.locator(LOCATORS.arrivalStartDate), condition.arrival_s_dt, '入庫開始日を入力');
   }
   if (condition.arrival_e_dt) {
-    await page.locator(LOCATORS.arrivalEndDate).fill(condition.arrival_e_dt);
+    await highlightFill(page, page.locator(LOCATORS.arrivalEndDate), condition.arrival_e_dt, '入庫終了日を入力');
   }
 
   await wait(page);
-  await page.locator(LOCATORS.searchButton).first().click();
+  await highlightClick(page, page.locator(LOCATORS.searchButton).first(), '検索ボタンをクリック');
   await wait(page);
   await assertPageLoaded(page);
 }
@@ -126,6 +127,7 @@ test.describe('注文検索画面', () => {
   test('画面が正常に表示され検索フォームの全要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: 検索フォーム全要素の確認');
 
     await expect(page.locator(LOCATORS.searchButton).first()).toBeVisible();
     await expect(page.locator(LOCATORS.noInput)).toBeVisible();
@@ -141,6 +143,7 @@ test.describe('注文検索画面', () => {
     await expect(page.locator(LOCATORS.arrivalStartDate)).toBeVisible();
     await expect(page.locator(LOCATORS.arrivalEndDate)).toBeVisible();
     await wait(page);
+    await showTestResult(page, true);
   });
 
   // 要件2・3: 検索条件テスト（データ駆動、1テスト内で連続実行）
@@ -150,6 +153,7 @@ test.describe('注文検索画面', () => {
     for (const pattern of SEARCH_PATTERNS) {
       await executeSearch(page, pattern);
     }
+    await showTestResult(page, true);
   });
 
   // 要件4: リスト内リンク遷移（全種別を1行目で確認）
@@ -166,28 +170,32 @@ test.describe('注文検索画面', () => {
     for (const { name, selector, urlPattern } of linkTypes) {
       await page.goto(PAGE_URL);
       await assertPageLoaded(page);
+      await showTestTitle(page, `リンク遷移: ${name}`);
 
       const link = page.locator(selector).first();
       if (await link.isVisible()) {
-        await link.click();
+        await highlightClick(page, link, `${name}リンクをクリック`);
         await wait(page);
         await page.waitForURL(urlPattern, { timeout: 10000 });
         await assertPageLoaded(page);
       }
     }
+    await showTestResult(page, true);
   });
 
   // 要件5: ページネーション
   test('ページネーション（次のページ）をクリックして遷移する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'ページネーション: 2ページ目へ遷移');
 
     const nextPage = page.locator(LOCATORS.paginationPage2).first();
     if (await nextPage.isVisible()) {
-      await nextPage.click();
+      await highlightClick(page, nextPage, 'ページ2をクリック');
       await wait(page);
       await page.waitForURL(/paged=2/, { timeout: 10000 });
       await assertPageLoaded(page);
+      await showTestResult(page, true);
     } else {
       test.skip(true, 'ページネーションが存在しない');
     }

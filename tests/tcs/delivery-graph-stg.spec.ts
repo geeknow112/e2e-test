@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { assertPageLoaded, wait } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
 const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=delivery-graph-stg`;
@@ -16,6 +16,7 @@ test.describe('配送予定表(STG)画面', () => {
   test('画面が正常に表示されフィルタボタン群が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, '画面初期表示: フィルタボタン群の確認');
 
     // 検索ボタン（TCSバグあり、存在確認のみ）
     await expect(page.locator('#wpbody-content input[value="検索"]').first()).toBeVisible();
@@ -25,6 +26,7 @@ test.describe('配送予定表(STG)画面', () => {
       await expect(page.locator(`#wpbody-content input[value="${label}"]`).first()).toBeVisible();
     }
     await wait(page);
+    await showTestResult(page, true);
   });
 
   // 要件2: フィルタボタン動作確認（1テスト内で連続実行）
@@ -34,27 +36,31 @@ test.describe('配送予定表(STG)画面', () => {
     for (const label of FILTER_BUTTONS) {
       await page.goto(PAGE_URL);
       await assertPageLoaded(page);
+      await showTestTitle(page, `フィルタ: ${label}`);
 
       const btn = page.locator(`#wpbody-content input[value="${label}"]`).first();
-      await btn.click();
+      await highlightClick(page, btn, `${label}ボタンをクリック`);
       await wait(page);
 
       const body = await page.locator('body').textContent();
       expect(body).not.toContain('Fatal error');
     }
+    await showTestResult(page, true);
   });
 
   // 要件3: 注文詳細リンク遷移
   test('商品名リンクをクリックして注文詳細画面に遷移する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'リンク遷移: 注文詳細');
 
     const salesLink = page.locator('#wpbody-content a[href*="page=sales-detail"]').first();
     if (await salesLink.isVisible()) {
-      await salesLink.click();
+      await highlightClick(page, salesLink, '注文詳細リンクをクリック');
       await wait(page);
       await page.waitForURL(/page=sales-detail/, { timeout: 10000 });
       await assertPageLoaded(page);
+      await showTestResult(page, true);
     } else {
       test.skip(true, '注文詳細リンクが存在しない');
     }
@@ -64,6 +70,7 @@ test.describe('配送予定表(STG)画面', () => {
   test('テーブル内の入力フォーム要素が存在する', async ({ page }) => {
     await page.goto(PAGE_URL);
     await assertPageLoaded(page);
+    await showTestTitle(page, 'テーブル内入力フォーム要素の確認');
 
     const qtyInput = page.locator('#wpbody-content input[type="number"][id^="qty_"]').first();
     await expect(qtyInput).toBeAttached();
@@ -80,5 +87,6 @@ test.describe('配送予定表(STG)画面', () => {
     await expect(page.locator('#wpbody-content a.btn-primary:has-text("入力")').first()).toBeAttached();
 
     await wait(page);
+    await showTestResult(page, true);
   });
 });
