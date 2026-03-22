@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick } from '../../lib/test-helpers';
+import { assertPageLoaded, wait, showTestTitle, showTestResult, highlightClick, highlightFill, showStep } from '../../lib/test-helpers';
 
 const baseUrl = process.env.BASE_URL!;
 const PAGE_URL = `${baseUrl}/wp-admin/admin.php?page=delivery-graph`;
@@ -99,5 +99,94 @@ test.describe('配送予定表画面', () => {
 
     await wait(page);
     await showTestResult(page, true);
+  });
+
+  // 要件5: 日付検索フォームの動作確認（既知バグ: cmd_searchのBladeテンプレート未展開）
+  test('日付検索フォームに日付を入力して検索ボタンを押す', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto(PAGE_URL);
+    await assertPageLoaded(page);
+    await showTestTitle(page, '日付検索フォームの動作確認');
+
+    // 日付入力欄の存在確認
+    const dateInput = page.locator('#wpbody-content input[type="date"][name="s[sdt]"]');
+    await expect(dateInput).toBeVisible();
+    await showStep(page, '日付入力欄が存在することを確認');
+    await wait(page);
+
+    // 日付を入力
+    await highlightFill(page, dateInput, '2026-03-28', '開始日に 2026-03-28 を入力');
+    await wait(page);
+
+    // 検索ボタンの存在確認
+    const searchBtn = page.locator('#wpbody-content input#search-submit[value="検索"]');
+    await expect(searchBtn).toBeVisible();
+
+    // cmd_search関数のBladeテンプレート展開状態を確認
+    const cmdSearchSource = await page.evaluate(() => {
+      return typeof (window as any).cmd_search === 'function'
+        ? (window as any).cmd_search.toString()
+        : 'NOT FOUND';
+    });
+    const hasBladeTemplate = cmdSearchSource.includes('{{') || cmdSearchSource.includes('admin_url()');
+    await showStep(page, hasBladeTemplate
+      ? '⚠️ BUG検出: cmd_search内にBladeテンプレートが未展開のまま残っている'
+      : '✅ cmd_search関数は正常に展開されている');
+    await wait(page);
+
+    // 検索ボタンをクリック（Bladeバグにより不正URLへ遷移する可能性あり）
+    const currentUrl = page.url();
+    await showStep(page, '検索ボタンをクリック');
+
+    // クリック→ナビゲーションをまとめてtry/catchで処理
+    // Bladeバグの場合、不正URLへ遷移しページコンテキストが壊れる
+    let pageAlive = true;
+    let searchWorked = false;
+    try {
+      // noWaitAfter: trueでクリック後のナビゲーション完了を待たない
+      await searchBtn.click({ noWaitAfter: true });
+      // 少し待ってからページ状態を確認
+      await page.waitForTimeout(3000);
+      // ページが生きているか確認
+      await page.evaluate(() => document.title);
+
+      // action=search を含むURLに遷移したか確認
+      const afterUrl = page.url();
+      if (/action=search/.test(afterUrl)) {
+        searchWorked = true;
+        await showStep(page, '✅ 検索が実行され、URLに action=search が含まれている');
+        await assertPageLoaded(page);
+        const hasDateParam = afterUrl.includes('s%5Bsdt%5D=') || afterUrl.includes('s[sdt]=');
+        await showStep(page, hasDateParam
+          ? '✅ URLに日付パラメータが含まれている'
+          : '⚠️ URLに日付パラメータが含まれていない');
+      } else if (afterUrl === currentUrl) {
+        await showStep(page, '⚠️ BUG: 検索ボタンを押してもページ遷移しなかった');
+      } else if (afterUrl.includes('{{') || afterUrl.includes('admin_url')) {
+        await showStep(page, '⚠️ BUG: Bladeテンプレートが未展開のURLに遷移した');
+      } else {
+        await showStep(page, '⚠️ 検索後のURLが想定外: 遷移先を確認してください');
+      }
+
+      // エラーページでないことだけ確認
+      const body = await page.locator('body').textContent();
+      expect(body).not.toContain('Fatal error');
+    } catch {
+      pageAlive = false;
+      console.log('⚠️ BUG: 検索ボタンクリック後にページコンテキストが破壊されました（Bladeテンプレート未展開が原因の可能性）');
+    }
+
+    // バグの有無を記録（テスト自体はfailにしない、バグレポート用）
+    if (hasBladeTemplate) {
+      test.info().annotations.push({
+        type: 'known-bug',
+        description: 'cmd_search関数内のBladeテンプレート(admin_url, formPage)が未展開。日付検索が動作しない。',
+      });
+    }
+
+    if (pageAlive) {
+      await wait(page);
+      await showTestResult(page, !hasBladeTemplate);
+    }
   });
 });

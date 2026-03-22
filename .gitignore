@@ -3,3 +3,4 @@ test-results/
 playwright-report/
 .env
 auth.json
+memo.security-incident.20260321.md
