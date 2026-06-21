@@ -1,7 +1,7 @@
 {
   "name": "e2e-tests",
   "version": "1.0.0",
-  "description": "",
+  "description": "E2E tests for WordPress admin (TCS plugin) using Playwright",
   "main": "index.js",
   "scripts": {
     "auth": "npx playwright test --project=setup",
@@ -9,15 +9,17 @@
     "test": "npx playwright test",
     "test:headed": "npx playwright test --headed",
     "test:ui": "npx playwright test --ui",
-    "test:only": "npx playwright test --project=chromium --no-deps"
+    "test:only": "npx playwright test --project=chromium --no-deps",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": ["playwright", "e2e", "testing", "wordpress"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.2.3",
-    "dotenv": "^17.2.4"
+    "dotenv": "^17.2.4",
+    "typescript": "^5.8.3"
   }
 }
