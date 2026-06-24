@@ -127,3 +127,113 @@ export async function assertPageLoaded(page: Page) {
   expect(body).not.toContain('Not Found');
   await wait(page);
 }
+
+// ============================================================
+// テーブル検証ヘルパー
+// ============================================================
+
+/**
+ * テーブルのヘッダーが期待通りかを検証する
+ */
+export async function assertTableHeaders(page: Page, tableSelector: string, expectedHeaders: string[]) {
+  const headers = await page.locator(`${tableSelector} thead th`).allTextContents();
+  const normalizedHeaders = headers.map(h => h.trim());
+  for (const expected of expectedHeaders) {
+    expect(normalizedHeaders).toContain(expected);
+  }
+}
+
+/**
+ * テーブルの行数が期待範囲内かを検証する
+ */
+export async function assertTableRowCount(page: Page, tableSelector: string, min: number, max?: number) {
+  const rowCount = await page.locator(`${tableSelector} tbody tr`).count();
+  expect(rowCount).toBeGreaterThanOrEqual(min);
+  if (max !== undefined) {
+    expect(rowCount).toBeLessThanOrEqual(max);
+  }
+}
+
+/**
+ * テーブルに特定のテキストを含む行が存在するかを検証する
+ */
+export async function assertTableContainsText(page: Page, tableSelector: string, searchText: string) {
+  const tableText = await page.locator(`${tableSelector} tbody`).textContent();
+  expect(tableText).toContain(searchText);
+}
+
+/**
+ * テーブルの特定列の値を配列で取得する
+ */
+export async function getTableColumnValues(page: Page, tableSelector: string, columnIndex: number): Promise<string[]> {
+  const cells = await page.locator(`${tableSelector} tbody tr td:nth-child(${columnIndex + 1})`).allTextContents();
+  return cells.map(c => c.trim());
+}
+
+/**
+ * テーブルが空でないことを検証する
+ */
+export async function assertTableNotEmpty(page: Page, tableSelector: string, stepLabel?: string) {
+  if (stepLabel) await showStep(page, stepLabel);
+  const rowCount = await page.locator(`${tableSelector} tbody tr`).count();
+  expect(rowCount, 'テーブルにデータが存在すること').toBeGreaterThan(0);
+}
+
+// ============================================================
+// スクリーンショット・デバッグヘルパー
+// ============================================================
+
+/**
+ * 現在の画面状態をスクリーンショットとして保存（デバッグ用）
+ */
+export async function captureScreenshot(page: Page, name: string) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  await page.screenshot({ 
+    path: `test-results/debug-${name}-${timestamp}.png`,
+    fullPage: true 
+  });
+}
+
+/**
+ * 要素が表示されるまで待機し、見つからない場合はスクリーンショットを撮る
+ */
+export async function waitForElementOrCapture(page: Page, selector: string, timeout = 10000): Promise<boolean> {
+  try {
+    await page.locator(selector).waitFor({ state: 'visible', timeout });
+    return true;
+  } catch {
+    await captureScreenshot(page, `element-not-found-${selector.replace(/[^a-zA-Z0-9]/g, '_')}`);
+    return false;
+  }
+}
+
+// ============================================================
+// フォーム操作ヘルパー
+// ============================================================
+
+/**
+ * フォームの全入力をクリアする
+ */
+export async function clearFormInputs(page: Page, formSelector: string) {
+  const inputs = page.locator(`${formSelector} input[type="text"], ${formSelector} input[type="number"]`);
+  const count = await inputs.count();
+  for (let i = 0; i < count; i++) {
+    await inputs.nth(i).clear();
+  }
+}
+
+/**
+ * 日付範囲を入力するヘルパー
+ */
+export async function fillDateRange(
+  page: Page, 
+  startSelector: string, 
+  endSelector: string, 
+  startDate: string, 
+  endDate: string,
+  stepLabel?: string
+) {
+  if (stepLabel) await showStep(page, stepLabel);
+  await highlightFill(page, page.locator(startSelector), startDate);
+  await highlightFill(page, page.locator(endSelector), endDate);
+}
